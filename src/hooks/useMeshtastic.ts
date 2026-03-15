@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { MOCK_NODES, MOCK_MESSAGES } from "./mockMeshData";
 
 const POLL_INTERVAL = 5000;
 const STORAGE_KEY = "mesh_ctrl_connection";
@@ -70,14 +71,16 @@ export interface MeshState {
   lastUpdate: number | null;
   error: string | null;
   config: ConnectionConfig;
+  demoMode: boolean;
 }
 
 export function useMeshtastic() {
   const [config, setConfigState] = useState<ConnectionConfig>(loadConfig);
+  const [demoMode, setDemoMode] = useState(false);
   const configRef = useRef(config);
   configRef.current = config;
 
-  const [state, setState] = useState<Omit<MeshState, "config">>({
+  const [state, setState] = useState<Omit<MeshState, "config" | "demoMode">>({
     status: "DISCONNECTED",
     myNodeNum: null,
     nodes: [],
@@ -136,6 +139,7 @@ export function useMeshtastic() {
   }, [fetchNodes]);
 
   const connect = useCallback(() => {
+    setDemoMode(false);
     pollDevice();
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(pollDevice, POLL_INTERVAL);
@@ -156,10 +160,25 @@ export function useMeshtastic() {
     });
   }, []);
 
+  const enableDemo = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setDemoMode(true);
+    setState({
+      status: "LINK_ACQUIRED",
+      myNodeNum: MOCK_NODES[0].num,
+      nodes: MOCK_NODES,
+      messages: MOCK_MESSAGES,
+      lastUpdate: Date.now(),
+      error: null,
+    });
+  }, []);
+
   const setConfig = useCallback((newConfig: ConnectionConfig) => {
     saveConfig(newConfig);
     setConfigState(newConfig);
-    // Reconnect with new config after ref updates
     setTimeout(() => {
       disconnect();
       connect();
@@ -167,6 +186,22 @@ export function useMeshtastic() {
   }, [disconnect, connect]);
 
   const sendMessage = useCallback(async (text: string, to?: number) => {
+    if (demoMode) {
+      setState((s) => ({
+        ...s,
+        messages: [
+          ...s.messages,
+          {
+            id: `local-${Date.now()}`,
+            from: s.myNodeNum ?? 0,
+            to: to ?? 0xffffffff,
+            text,
+            time: Math.floor(Date.now() / 1000),
+          },
+        ],
+      }));
+      return;
+    }
     try {
       await fetch(buildUrl("/api/v1/sendtext"), {
         method: "POST",
@@ -189,14 +224,14 @@ export function useMeshtastic() {
     } catch (err) {
       console.error("Failed to send message:", err);
     }
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
-    connect();
+    // Don't auto-connect, let user choose
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [connect]);
+  }, []);
 
-  return { ...state, config, setConfig, sendMessage, connect, disconnect };
+  return { ...state, config, demoMode, setConfig, sendMessage, connect, disconnect, enableDemo };
 }
