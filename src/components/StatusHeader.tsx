@@ -6,9 +6,10 @@ interface StatusHeaderProps {
   nodeCount: number;
   lastUpdate: number | null;
   myNodeNum: number | null;
+  deviceIp?: string;
 }
 
-export function StatusHeader({ status, nodeCount, lastUpdate, myNodeNum }: StatusHeaderProps) {
+export function StatusHeader({ status, nodeCount, lastUpdate, myNodeNum, deviceIp = "---" }: StatusHeaderProps) {
   const statusColor = {
     DISCONNECTED: "text-muted-foreground",
     CONNECTING: "text-signal-amber glow-amber",

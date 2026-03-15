@@ -17,6 +17,7 @@ const Index = () => {
         nodeCount={mesh.nodes.length}
         lastUpdate={mesh.lastUpdate}
         myNodeNum={mesh.myNodeNum}
+        deviceIp={mesh.config.ip}
       />
 
       <div className="flex flex-1 overflow-hidden">
