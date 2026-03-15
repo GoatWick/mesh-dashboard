@@ -64,8 +64,7 @@ export function ConnectionOverlay({ status, error, config, onRetry, onUpdateConf
 
             {isError && (
               <div className="font-label text-muted-foreground text-center mb-4">
-                CORS may block requests from remote origins.
-                Run locally for direct device access.
+                Could not reach device. Verify IP and that the device is online.
               </div>
             )}
 
