@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 const POLL_INTERVAL = 5000;
 const STORAGE_KEY = "mesh_ctrl_connection";
@@ -73,23 +72,6 @@ export interface MeshState {
   config: ConnectionConfig;
 }
 
-async function proxyFetch(
-  config: ConnectionConfig,
-  endpoint: string,
-  method: string = "GET",
-  body?: unknown,
-) {
-  const deviceUrl = `${config.protocol}://${config.ip}`;
-
-  const { data, error } = await supabase.functions.invoke("mesh-proxy", {
-    body: { deviceUrl, endpoint, method, body },
-  });
-
-  if (error) throw new Error(error.message ?? "Proxy error");
-  if (data?.error) throw new Error(data.error);
-  return data;
-}
-
 export function useMeshtastic() {
   const [config, setConfigState] = useState<ConnectionConfig>(loadConfig);
   const configRef = useRef(config);
@@ -106,12 +88,18 @@ export function useMeshtastic() {
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  function buildUrl(path: string): string {
+    const c = configRef.current;
+    return `${c.protocol}://${c.ip}${path}`;
+  }
+
   const fetchNodes = useCallback(async () => {
     try {
-      const data: Record<string, MeshNode> = await proxyFetch(
-        configRef.current,
-        "/api/v1/nodes",
-      );
+      const res = await fetch(buildUrl("/api/v1/nodes"), {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: Record<string, MeshNode> = await res.json();
       return Object.values(data);
     } catch {
       return null;
@@ -179,9 +167,10 @@ export function useMeshtastic() {
 
   const sendMessage = useCallback(async (text: string, to?: number) => {
     try {
-      await proxyFetch(configRef.current, "/api/v1/sendtext", "POST", {
-        text,
-        to: to ?? 0xffffffff,
+      await fetch(buildUrl("/api/v1/sendtext"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, to: to ?? 0xffffffff }),
       });
       setState((s) => ({
         ...s,
