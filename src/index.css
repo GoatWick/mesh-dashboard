@@ -131,3 +131,20 @@
     animation: data-flash 300ms ease-out;
   }
 }
+
+/* Leaflet popup overrides */
+.leaflet-popup-content-wrapper {
+  background: transparent !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+}
+.leaflet-popup-tip {
+  background: hsl(240, 5%, 20%) !important;
+}
+.leaflet-container {
+  font-family: 'JetBrains Mono', monospace !important;
+}
