@@ -1,12 +1,52 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { useMeshtastic, type MeshNode } from "@/hooks/useMeshtastic";
+import { StatusHeader } from "@/components/StatusHeader";
+import { NodeSidebar } from "@/components/NodeSidebar";
+import { CommsStream } from "@/components/CommsStream";
+import { NodeDetailPanel } from "@/components/NodeDetailPanel";
+import { ConnectionOverlay } from "@/components/ConnectionOverlay";
 
 const Index = () => {
+  const mesh = useMeshtastic();
+  const [selectedNode, setSelectedNode] = useState<MeshNode | null>(null);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="flex flex-col h-screen bg-background overflow-hidden">
+      <StatusHeader
+        status={mesh.status}
+        nodeCount={mesh.nodes.length}
+        lastUpdate={mesh.lastUpdate}
+        myNodeNum={mesh.myNodeNum}
+      />
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left: Node List */}
+        <NodeSidebar
+          nodes={mesh.nodes}
+          selectedNode={selectedNode}
+          onSelectNode={setSelectedNode}
+        />
+
+        {/* Center: Comms + Detail */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            <CommsStream
+              messages={mesh.messages}
+              nodes={mesh.nodes}
+              myNodeNum={mesh.myNodeNum}
+              onSendMessage={mesh.sendMessage}
+            />
+          </div>
+
+          {selectedNode && <NodeDetailPanel node={selectedNode} />}
+        </div>
       </div>
+
+      <ConnectionOverlay
+        status={mesh.status}
+        error={mesh.error}
+        onRetry={mesh.connect}
+      />
     </div>
   );
 };
