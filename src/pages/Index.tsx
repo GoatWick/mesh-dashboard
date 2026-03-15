@@ -45,7 +45,9 @@ const Index = () => {
       <ConnectionOverlay
         status={mesh.status}
         error={mesh.error}
+        config={mesh.config}
         onRetry={mesh.connect}
+        onUpdateConfig={mesh.setConfig}
       />
     </div>
   );
