@@ -1,7 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const DEVICE_IP = "192.168.1.89";
 const POLL_INTERVAL = 5000;
+const STORAGE_KEY = "mesh_ctrl_connection";
+
+export interface ConnectionConfig {
+  ip: string;
+  protocol: "http" | "https";
+}
+
+function loadConfig(): ConnectionConfig {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return { ip: "192.168.1.89", protocol: "http" };
+}
+
+function saveConfig(config: ConnectionConfig) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+}
 
 export interface MeshNode {
   num: number;
@@ -52,22 +69,15 @@ export interface MeshState {
   messages: MeshMessage[];
   lastUpdate: number | null;
   error: string | null;
-}
-
-function buildUrl(path: string): string {
-  return `http://${DEVICE_IP}${path}`;
-}
-
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(buildUrl(path), {
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-  return res.json();
+  config: ConnectionConfig;
 }
 
 export function useMeshtastic() {
-  const [state, setState] = useState<MeshState>({
+  const [config, setConfigState] = useState<ConnectionConfig>(loadConfig);
+  const configRef = useRef(config);
+  configRef.current = config;
+
+  const [state, setState] = useState<Omit<MeshState, "config">>({
     status: "DISCONNECTED",
     myNodeNum: null,
     nodes: [],
@@ -78,27 +88,32 @@ export function useMeshtastic() {
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  function buildUrl(path: string): string {
+    const c = configRef.current;
+    return `${c.protocol}://${c.ip}${path}`;
+  }
+
   const fetchNodes = useCallback(async () => {
     try {
-      // Meshtastic HTTP API v1 JSON endpoints
-      const data = await fetchJson<Record<string, MeshNode>>("/api/v1/nodes");
-      const nodes = Object.values(data);
-      return nodes;
+      const res = await fetch(buildUrl("/api/v1/nodes"), {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: Record<string, MeshNode> = await res.json();
+      return Object.values(data);
     } catch {
       return null;
     }
   }, []);
 
   const pollDevice = useCallback(async () => {
+    setState((s) => ({
+      ...s,
+      status: s.status === "DISCONNECTED" ? "CONNECTING" : s.status,
+    }));
+
     try {
-      setState((s) => ({
-        ...s,
-        status: s.status === "DISCONNECTED" ? "CONNECTING" : s.status,
-      }));
-
-      // Fetch nodes
       const nodes = await fetchNodes();
-
       if (nodes) {
         setState((s) => ({
           ...s,
@@ -119,36 +134,6 @@ export function useMeshtastic() {
       }));
     }
   }, [fetchNodes]);
-
-  const sendMessage = useCallback(async (text: string, to?: number) => {
-    try {
-      await fetch(buildUrl("/api/v1/sendtext"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          to: to ?? 0xffffffff, // broadcast
-        }),
-      });
-
-      // Add to local messages
-      setState((s) => ({
-        ...s,
-        messages: [
-          ...s.messages,
-          {
-            id: `local-${Date.now()}`,
-            from: s.myNodeNum ?? 0,
-            to: to ?? 0xffffffff,
-            text,
-            time: Math.floor(Date.now() / 1000),
-          },
-        ],
-      }));
-    } catch (err) {
-      console.error("Failed to send message:", err);
-    }
-  }, []);
 
   const connect = useCallback(() => {
     pollDevice();
@@ -171,6 +156,41 @@ export function useMeshtastic() {
     });
   }, []);
 
+  const setConfig = useCallback((newConfig: ConnectionConfig) => {
+    saveConfig(newConfig);
+    setConfigState(newConfig);
+    // Reconnect with new config after ref updates
+    setTimeout(() => {
+      disconnect();
+      connect();
+    }, 50);
+  }, [disconnect, connect]);
+
+  const sendMessage = useCallback(async (text: string, to?: number) => {
+    try {
+      await fetch(buildUrl("/api/v1/sendtext"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, to: to ?? 0xffffffff }),
+      });
+      setState((s) => ({
+        ...s,
+        messages: [
+          ...s.messages,
+          {
+            id: `local-${Date.now()}`,
+            from: s.myNodeNum ?? 0,
+            to: to ?? 0xffffffff,
+            text,
+            time: Math.floor(Date.now() / 1000),
+          },
+        ],
+      }));
+    } catch (err) {
+      console.error("Failed to send message:", err);
+    }
+  }, []);
+
   useEffect(() => {
     connect();
     return () => {
@@ -178,5 +198,5 @@ export function useMeshtastic() {
     };
   }, [connect]);
 
-  return { ...state, sendMessage, connect, disconnect };
+  return { ...state, config, setConfig, sendMessage, connect, disconnect };
 }

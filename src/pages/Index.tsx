@@ -17,6 +17,7 @@ const Index = () => {
         nodeCount={mesh.nodes.length}
         lastUpdate={mesh.lastUpdate}
         myNodeNum={mesh.myNodeNum}
+        deviceIp={mesh.config.ip}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -45,7 +46,9 @@ const Index = () => {
       <ConnectionOverlay
         status={mesh.status}
         error={mesh.error}
+        config={mesh.config}
         onRetry={mesh.connect}
+        onUpdateConfig={mesh.setConfig}
       />
     </div>
   );
