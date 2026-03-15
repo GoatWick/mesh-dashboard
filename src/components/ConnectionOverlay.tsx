@@ -8,10 +8,9 @@ interface ConnectionOverlayProps {
   config: ConnectionConfig;
   onRetry: () => void;
   onUpdateConfig: (config: ConnectionConfig) => void;
-  onDemo: () => void;
 }
 
-export function ConnectionOverlay({ status, error, config, onRetry, onUpdateConfig, onDemo }: ConnectionOverlayProps) {
+export function ConnectionOverlay({ status, error, config, onRetry, onUpdateConfig }: ConnectionOverlayProps) {
   const [ip, setIp] = useState(config.ip);
   const [protocol, setProtocol] = useState<"http" | "https">(config.protocol);
 
@@ -76,7 +75,6 @@ export function ConnectionOverlay({ status, error, config, onRetry, onUpdateConf
               </div>
             )}
 
-            {/* Connection Config */}
             <div className="space-y-3 mb-4">
               <div>
                 <label className="font-label text-muted-foreground block mb-1">[PROTOCOL]</label>
@@ -113,26 +111,17 @@ export function ConnectionOverlay({ status, error, config, onRetry, onUpdateConf
               </div>
             </div>
 
-            <div className="space-y-2">
-              <button
-                onClick={handleConnect}
-                disabled={!ip.trim()}
-                className={`w-full font-label px-6 py-2.5 border transition-colors duration-50 disabled:opacity-30 ${
-                  isError
-                    ? "border-signal-red text-signal-red hover:bg-signal-red hover:text-foreground"
-                    : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                }`}
-              >
-                {isError ? "RETRY_CONNECTION" : "CONNECT"}
-              </button>
-
-              <button
-                onClick={onDemo}
-                className="w-full font-label px-6 py-2 border border-border text-muted-foreground hover:text-signal-amber hover:border-signal-amber transition-colors duration-50"
-              >
-                DEMO_MODE // SIMULATED DATA
-              </button>
-            </div>
+            <button
+              onClick={handleConnect}
+              disabled={!ip.trim()}
+              className={`w-full font-label px-6 py-2.5 border transition-colors duration-50 disabled:opacity-30 ${
+                isError
+                  ? "border-signal-red text-signal-red hover:bg-signal-red hover:text-foreground"
+                  : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              }`}
+            >
+              {isError ? "RETRY_CONNECTION" : "CONNECT"}
+            </button>
           </>
         )}
       </div>
