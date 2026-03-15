@@ -17,18 +17,16 @@ const Index = () => {
         nodeCount={mesh.nodes.length}
         lastUpdate={mesh.lastUpdate}
         myNodeNum={mesh.myNodeNum}
-        deviceIp={mesh.config.ip}
+        deviceIp={mesh.demoMode ? "DEMO" : mesh.config.ip}
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Node List */}
         <NodeSidebar
           nodes={mesh.nodes}
           selectedNode={selectedNode}
           onSelectNode={setSelectedNode}
         />
 
-        {/* Center: Comms + Detail */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <CommsStream
@@ -49,6 +47,7 @@ const Index = () => {
         config={mesh.config}
         onRetry={mesh.connect}
         onUpdateConfig={mesh.setConfig}
+        onDemo={mesh.enableDemo}
       />
     </div>
   );
